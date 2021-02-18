@@ -2,40 +2,47 @@
 import pandas as pd
 import psycopg2 as psy
 from   psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
-
-######################
-### DATABASE SETUP ###
-######################
-
-host='localhost'
-port=5432
-user='postgres'
-password='toor'
-
-dbname='grupo_p'
-schema='sc_covid'
+import conexao as c
 
 ######################
 ### DATASET SETUP ###
 ######################
 
 path= 'database/covid19_casos_brasil.csv'
-municipios = ['Presidente Prudente', 'Rondonópolis', 'Campo Novo do Parecis', 'Araraquara', 'Porto Velho']
+municipios = ['Presidente Prudente', 
+    'Rondonópolis', 'Campo Novo do Parecis', 
+    'Araraquara', 'Porto Velho']
 ######################
 
 kwargs = dict()
 
-
-def setup():
-    kwargs['host'] = host
-    kwargs['port'] = port
-    kwargs['user'] = user
-    kwargs['password'] = password
-    return kwargs
+def execute_many(conn, df, table):
+    """
+    Using cursor.executemany() to insert the dataframe
+    """
+    # Create a list of tupples from the dataframe values
+    tuples = [tuple(x) for x in df.to_numpy()]
+    # Comma-separated dataframe columns
+    cols = ','.join(list(df.columns))
+    print("Persistindo tabela: "+table)    
+    print("Colunas: "+cols)
+    # SQL quert to execute
+    query  = geraInsert(df) % (table, cols)
+    cursor = conn.cursor()
+    try:
+        cursor.executemany(query, tuples)
+        conn.commit()
+    except (Exception, psy.DatabaseError) as error:
+        print("Error: %s" % error)
+        conn.rollback()
+        cursor.close()
+        return 1
+    print("execute_many() done")
+    cursor.close()
 
 def mapearDataframe(df):
     municipioDF = df.filter(['city_ibge_code','city','state','estimated_population_2019'])
-    municipioDF = municipioDF[municipioDF.city.notnull()] #removendo estados
+    municipioDF = municipioDF.drop_duplicates(subset=['city_ibge_code'], keep='first')
 
     reportDF = df.filter(['city_ibge_code','date','epidemiological_week','new_confirmed','new_deaths'])    
     reportDF = reportDF.rename(columns={"date": "report_date",})
@@ -45,47 +52,48 @@ def mapearDataframe(df):
 
     return municipioDF, reportDF, aboutReportDF
 
-    
+def geraInsert(df):
+    insert = {}
+    insert[1] = "INSERT INTO %s(%s) VALUES(%%s)"
+    insert[2] = "INSERT INTO %s(%s) VALUES(%%s,%%s)"
+    insert[3] = "INSERT INTO %s(%s) VALUES(%%s,%%s,%%s)"
+    insert[4] = "INSERT INTO %s(%s) VALUES(%%s,%%s,%%s,%%s)"
+    insert[5] = "INSERT INTO %s(%s) VALUES(%%s,%%s,%%s,%%s,%%s)"
+    insert[6] = "INSERT INTO %s(%s) VALUES(%%s,%%s,%%s,%%s,%%s,%%s)"
+    insert[7] = "INSERT INTO %s(%s) VALUES(%%s,%%s,%%s,%%s,%%s,%%s,%%s)"
+    insert[8] = "INSERT INTO %s(%s) VALUES(%%s,%%s,%%s,%%s,%%s,%%s,%%s,%%s)"
+    insert[9] = "INSERT INTO %s(%s) VALUES(%%s,%%s,%%s,%%s,%%s,%%s,%%s,%%s,%%s)"
+    insert[10] = "INSERT INTO %s(%s) VALUES(%%s,%%s,%%s,%%s,%%s,%%s,%%s,%%s,%%s,%%s)"
+    return insert.get(len(df.columns))   
+
 def carregaDataSet(path=path):
     df = pd.read_csv(path,parse_dates=['date','last_available_date'])
-    return df
-
-def conectar(**kwargs):
-    host = kwargs.get('host')
-    port = kwargs.get('port')
-    dbname = kwargs.get('dbname')
-    user = kwargs.get('user')
-    password = kwargs.get('password')
-
-    conn = psy.connect(host=host, port=port, dbname=dbname, user=user, password=password)
-    conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
-
-    return conn
-
-def abrirCursor(conn):
-    return conn.cursor()
-
-def executar(cur,cmd):
-    cur.execute(cmd)
-    records = cur.fetchall()
-    for rec in records:
-        print(rec)
-    print(str(cur.rowcount) +' row(s) affected(s).')
+    return df.dropna(axis=0)
 
 def preparacao(df):
-    kwargs = setup()
-    conn = conectar(**kwargs)
-    cur = abrirCursor(conn)
+    kwargs = c.setup()
+    conn = c.conectar(**kwargs)
 
-    mapearDataframe(df)
-    return kwargs, conn, cur
+    municipioDF, reportDF, aboutReportDF = mapearDataframe(df)
+    return conn, municipioDF, reportDF, aboutReportDF
+
+def persiste(conn,  municipioDF, reportDF, aboutReportDF):
+    execute_many(conn,municipioDF,c.schema+'.municipio')
+    execute_many(conn,reportDF,c.schema+'.report')
+    execute_many(conn,aboutReportDF,c.schema+'.about_report')
+
+def recupera(conn):
+    consulta = c.sqlParaString('sql/selecaoParaDF.sql')
+    df = pd.read_sql_query(consulta,conn)
+    df = df.loc[df['city'].isin(municipios)]
+    print(df.dtypes)
+    print(df.shape)
 
 def main():
     df = carregaDataSet()
-    kwargs,conn,cur = preparacao(df)
-    executar(cur,"select 1")
-
-    print(df.shape)
+    conn, municipioDF, reportDF, aboutReportDF = preparacao(df)
+    #persiste(conn,  municipioDF, reportDF, aboutReportDF)
+    recupera(conn)
     return
 
 if __name__ == '__main__':

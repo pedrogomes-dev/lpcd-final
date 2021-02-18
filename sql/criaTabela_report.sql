@@ -1,4 +1,4 @@
-CREATE TABLE report (
+CREATE TABLE IF NOT EXISTS report (
 	city_ibge_code bigint NOT NULL,
 	report_date date NOT NULL,
 	epidemiological_week bigint NOT NULL,

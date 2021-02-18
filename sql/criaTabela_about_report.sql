@@ -1,5 +1,5 @@
 
-CREATE TABLE about_report (
+CREATE TABLE IF NOT EXISTS about_report (
 	city_ibge_code bigint NOT NULL,
 	report_date date NOT NULL,
 	is_last bool NOT NULL,

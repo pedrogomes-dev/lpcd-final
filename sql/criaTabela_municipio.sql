@@ -1,4 +1,4 @@
-CREATE TABLE municipio (
+CREATE TABLE IF NOT EXISTS municipio (
 	city_ibge_code bigint NOT NULL,
 	city varchar(128) NOT NULL,
 	state varchar(2) NOT NULL,
