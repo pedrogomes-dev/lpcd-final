@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import sys
-from typing import Dict
 import psycopg2 as psy
 from   psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT 
 
@@ -45,8 +44,14 @@ def conectar(**kwargs):
     return conn
 
 def abrirCursor(conn):
-# Open a cursor to perform database operations
     return conn.cursor()
+
+def executar(cur,cmd):
+    cur.execute(cmd)
+    records = cur.fetchall()
+    for rec in records:
+        print(rec)
+    print(str(cur.rowcount) +' row(s) affected(s).')
 
 def criarBanco(cur,dbname='grupo_p'):
     cur.execute("DROP DATABASE IF EXISTS "+dbname+";")
@@ -59,12 +64,6 @@ def criarSchema(cur):
     executar(cur,"SELECT current_schema()")
     return
 
-def executar(cur,cmd):
-    cur.execute(cmd)
-    records = cur.fetchall()
-    for rec in records:
-        print(rec)
-
 def reconectar(conn,cur,**kwargs):
     cur.close()
     conn.close()
@@ -76,31 +75,33 @@ def criarTabelas(cur):
     cria_tabela_municipio = sqlParaString('sql/criaTabela_municipio.sql')
     cria_tabela_report = sqlParaString('sql/criaTabela_report.sql')
     criar_tabela_about_report = sqlParaString('sql/criaTabela_about_report.sql')
-    defineRestricoes = sqlParaString('sql/defineRestricoes.sql')
     cur.execute(cria_tabela_municipio)
     cur.execute(cria_tabela_report) 
     cur.execute(criar_tabela_about_report)
-    #cur.execute(defineRestricoes) 
-
     executar(cur,"select 'tabelas criadas'")
 
-def main():
+def preparacao():
     kwargs = setup()
     conn = conectar(**kwargs)
     cur = abrirCursor(conn)
-    
+    return kwargs, conn, cur
+
+def definicao(conn, cur, kwargs):
     criarBanco(cur,dbname='grupo_p')
     conn, cur = reconectar(conn,cur,**kwargs)
-
     criarSchema(cur)
-    #https://stackoverflow.com/questions/27884268/return-pandas-dataframe-from-postgresql-query-with-sqlalchemy
-    
     criarTabelas(cur)
+    return conn, cur
 
+def encerramento(conn, cur):
     cur.close()
     conn.close()
+
+def main():
+    kwargs,conn,cur = preparacao()
+    conn, cur = definicao(conn, cur, kwargs)
+    encerramento(conn, cur)
     return
 
 if __name__ == '__main__':
-    # execute only if run as the entry point into the program
     main()
