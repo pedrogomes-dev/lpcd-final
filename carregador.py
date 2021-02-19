@@ -8,7 +8,7 @@ import conexao as c
 ### DATASET SETUP ###
 ######################
 
-path= 'database/covid19_casos_brasil.csv'
+path = 'database/covid19_casos_brasil.csv'
 municipios = ['Presidente Prudente', 
     'Rondonópolis', 'Campo Novo do Parecis', 
     'Araraquara', 'Porto Velho']
@@ -17,16 +17,10 @@ municipios = ['Presidente Prudente',
 kwargs = dict()
 
 def execute_many(conn, df, table):
-    """
-    Using cursor.executemany() to insert the dataframe
-    """
-    # Create a list of tupples from the dataframe values
     tuples = [tuple(x) for x in df.to_numpy()]
-    # Comma-separated dataframe columns
     cols = ','.join(list(df.columns))
     print("Persistindo tabela: "+table)    
     print("Colunas: "+cols)
-    # SQL quert to execute
     query  = geraInsert(df) % (table, cols)
     cursor = conn.cursor()
     try:
@@ -37,7 +31,6 @@ def execute_many(conn, df, table):
         conn.rollback()
         cursor.close()
         return 1
-    print("execute_many() done")
     cursor.close()
 
 def mapearDataframe(df):
