@@ -81,13 +81,14 @@ def recupera(conn):
     df = df.loc[df['city'].isin(municipios)]
     print(df.dtypes)
     print(df.shape)
+    return df
 
 def main():
     df = carregaDataSet()
     conn, municipioDF, reportDF, aboutReportDF = preparacao(df)
     #persiste(conn,  municipioDF, reportDF, aboutReportDF)
-    recupera(conn)
-    return
+    df_filtrado = recupera(conn)
+    return df_filtrado
 
 if __name__ == '__main__':
     main()

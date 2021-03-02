@@ -66,9 +66,22 @@ def encerramento(conn, cur):
     cur.close()
     conn.close()
 
+def log(cur):
+    cur.execute('select count(*) from municipio')
+    municipios_count = cur.fetchall()
+
+    cur.execute('select count(*) from report')
+    reports_count = cur.fetchall()
+
+    cur.execute('select count(*) from about_report')
+    about_reports_count = cur.fetchall()
+
+    print(f'Inseridos: {municipios_count[0][0]} municípos, {reports_count[0][0]} relatórios')
+
 def main():
     kwargs,conn,cur = preparacao()
     conn, cur = definicao(conn, cur, kwargs)
+    log(cur)
     encerramento(conn, cur)
     return
 
